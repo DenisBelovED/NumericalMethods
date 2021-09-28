@@ -1,0 +1,10 @@
+﻿################################################################################
+# Данный GITIGNORE-файл был автоматически создан Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs/NumericalMethods/v16
+/Debug
+/NumericalMethods/Debug
+/NumericalMethods/x64
+/NumericalMethodsDevelop/x64/Release
+/x64/Release
