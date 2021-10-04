@@ -2,7 +2,6 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <math.h>
-#include <stdio.h>
 #endif
 
 /*
@@ -19,22 +18,25 @@ PyObject* half_division(PyObject*, PyObject* args)
     double r, c, left_edge, right_edge, epsilon;
     double (*f)(double) = [](double x) { return pow(x, 5) + pow(x, 2) - 5; };
 
-    if (PyArg_ParseTuple(args, "ddd", &left_edge, &right_edge, &epsilon))
-        printf("Get args: [%.9f, %.9f] eps=%.9f\n", left_edge, right_edge, epsilon);
-    else
+    if (!PyArg_ParseTuple(args, "ddd", &left_edge, &right_edge, &epsilon))
     {
-        printf("Wrong args, call example: half_division(1.2, 3.4, 0.001)\n");
-        return nullptr;
+        PyErr_SetString(PyExc_ValueError, "Wrong args, call example: half_division(1.2, 3.4, 0.001)\n");
+        return NULL;
     }
     if (left_edge >= right_edge)
     {
-        printf("Wrong input range: left edge shoud < right edge\n");
-        return nullptr;
+        PyErr_SetString(PyExc_ValueError, "Wrong input range: left edge shoud < right edge\n");
+        return NULL;
     }
     if ((f(left_edge) * f(right_edge) >= 0) || (epsilon <= 0))
     {
-        printf("Wrong initial conditions, must be f(a) * f(b) < 0 on [a, b], epsilon > 0\n");
-        return nullptr;
+        PyErr_SetString(PyExc_ValueError, "Wrong initial conditions, must be f(a) * f(b) < 0 on [a, b], epsilon > 0\n");
+        return NULL;
+    }
+    if (right_edge - left_edge <= epsilon)
+    {
+        PyErr_SetString(PyExc_ValueError, "Wrong initial conditions, must be |b - a| >> epsilon\n");
+        return NULL;
     }
 
     PyObject* list = PyList_New(0);
