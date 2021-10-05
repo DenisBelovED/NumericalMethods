@@ -55,12 +55,53 @@ PyObject* half_division(PyObject*, PyObject* args)
     return list;
 }
 
+PyObject* simple_iteration(PyObject*, PyObject* args)
+{
+    double left_edge, right_edge, x_0, epsilon, c;
+    if (!PyArg_ParseTuple(args, "ddddd", &left_edge, &right_edge, &epsilon, &x_0, &c))
+    {
+        PyErr_SetString(PyExc_ValueError, "Wrong args, call example: simple_iteration(1.2, 3.4, 0.001, 1.3, 0.01)\n");
+        return NULL;
+    }
+    if (left_edge >= right_edge || (epsilon <= 0))
+    {
+        PyErr_SetString(PyExc_ValueError, "Wrong input range: left edge shoud < right edge, epsilon > 0\n");
+        return NULL;
+    }
+    if (right_edge - left_edge <= epsilon)
+    {
+        PyErr_SetString(PyExc_ValueError, "Wrong initial conditions, must be |b - a| >> epsilon\n");
+        return NULL;
+    }
+    if (x_0 < left_edge || right_edge < x_0)
+    {
+        PyErr_SetString(PyExc_ValueError, "Wrong initial conditions, x_0 must be in [a, b]\n");
+        return NULL;
+    }
+
+    PyObject* list = PyList_New(0);
+    double (*f)(double) = [](double x) { return pow(x, 5) + pow(x, 2) - 5; };
+    double x_i = x_0, x_j = x_0 - c * f(x_0);
+
+    while (fabs(x_j - x_i) > epsilon)
+    {
+        PyList_Append(list, PyTuple_Pack(2, PyFloat_FromDouble(x_i), PyFloat_FromDouble(x_j)));
+        if (!(left_edge < x_j < right_edge))
+            return list;
+        x_i = x_j;
+        x_j = x_i - c * f(x_i);
+    }
+    PyList_Append(list, PyTuple_Pack(2, PyFloat_FromDouble(x_i), PyFloat_FromDouble(x_j)));
+    return list;
+}
+
 static PyMethodDef compile_methods[] = {
     // The first property is the name exposed to Python, fast_tanh
     // The second is the C++ function with the implementation
     // METH_O means it takes a single PyObject argument
     // { "fast_tanh", (PyCFunction)tanh_impl, METH_O, nullptr },
     { "half_division", (PyCFunction)half_division, METH_VARARGS, nullptr},
+    { "simple_iteration", (PyCFunction)simple_iteration, METH_VARARGS, nullptr},
     // Terminate the array with an object containing nulls.
     { nullptr, nullptr, 0, nullptr }
 };

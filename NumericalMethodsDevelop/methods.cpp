@@ -16,3 +16,15 @@ double half_division(double left_edge, double right_edge, double epsilon)
 	}
 	return c;
 }
+
+double simple_iteration(double left_edge, double right_edge, double x_0, double epsilon, double c)
+{
+	double (*f)(double) = [](double x) { return pow(x, 5) + pow(x, 2) - 5; };
+	double x_i = x_0, x_j = x_0 - c * f(x_0);
+	while (fabs(x_j - x_i) > epsilon)
+	{
+		x_i = x_j;
+		x_j = x_i - c * f(x_i);
+	}
+	return x_j;
+}
