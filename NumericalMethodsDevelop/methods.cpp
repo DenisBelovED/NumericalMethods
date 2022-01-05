@@ -2,6 +2,7 @@
 #include <iostream>
 #include <Eigen/Dense>
 
+/*
 double half_division(double left_edge, double right_edge, double epsilon)
 {
 	double (*f)(double) = [](double x) { return pow(x, 5) + pow(x, 2) - 5; };
@@ -73,6 +74,7 @@ double simple_iteration_test(double left_edge, double right_edge, double x_0, do
 	}
 	return x_j;
 }
+*/
 
 std::vector<std::vector<double>>* cholesky(std::vector<std::vector<double>>& mat)
 {
@@ -109,15 +111,23 @@ double ij_element(std::vector<std::vector<double>>& t_mat, double a, size_t line
 void lab_2()
 {
 	size_t n;
+	double min, max;
 	std::cout << "Input n-dim:" << std::endl;
 	std::cin >> n;
-	std::cout << "Generate matrix : " << n << "x" << n << std::endl;
-	auto mat = generate_matrix(n, 10);
+	std::cout << "Input real D_min and D_max for generate condition number:" << std::endl;
+	std::cin >> min >> max;
+	std::cout << "Generate matrix A: " << n << "x" << n << std::endl;
+	auto mat = generate_matrix(n, 100, min, max);
 	print_mat(*mat);
 	auto S = cholesky(*mat);
+	auto S_t = transpose(*S);
+	std::cout << "L" << std::endl;
 	print_mat(*S);
+	std::cout << "L'" << std::endl;
+	print_mat(*S_t);
 	delete mat;
 	delete S;
+	delete S_t;
 }
 
 double det(const std::vector<std::vector<double>>& mat)
@@ -157,6 +167,8 @@ std::vector<std::vector<double>>* generate_matrix(size_t n, size_t mod, double m
 	Eigen::HouseholderQR<Eigen::MatrixXd> qr(matx);
 	Q = qr.householderQ();
 	matx = Q * D * Q.transpose();
+
+	std::cout << "Condition number = " << matx.norm() * matx.reverse().norm() << std::endl;
 
 	auto mat = new std::vector<std::vector<double>>(n, std::vector<double>(n, 0));
 	for (size_t i = 0; i < n; i++)
@@ -221,4 +233,13 @@ int int_random(int mod, bool positive)
 {
 	std::random_device rd;
 	return (positive ? (rd() % mod) + 1 : (rd() % mod) - (int)(mod / 2));
+}
+
+std::vector<std::vector<double>>* transpose(const std::vector<std::vector<double>>& mat)
+{
+	auto t = new std::vector<std::vector<double>>(mat[0].size(), std::vector<double>(mat.size(), 0));
+	for (size_t i = 0; i < mat.size(); i++)
+		for (size_t j = 0; j < mat[0].size(); j++)
+			(*t)[j][i] = mat[i][j];
+	return t;
 }
