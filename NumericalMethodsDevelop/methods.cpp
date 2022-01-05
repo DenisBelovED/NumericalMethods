@@ -1,5 +1,6 @@
 #include "methods.h"
 #include <iostream>
+#include <Eigen/Dense>
 
 double half_division(double left_edge, double right_edge, double epsilon)
 {
@@ -75,28 +76,34 @@ double simple_iteration_test(double left_edge, double right_edge, double x_0, do
 
 std::vector<std::vector<double>>* cholesky(std::vector<std::vector<double>>& mat)
 {
-	std::vector<std::vector<double>> l_mat(mat.size(), std::vector<double>(mat.size(), 0));
+	auto l_mat = new std::vector<std::vector<double>>(mat.size(), std::vector<double>(mat.size(), 0));
 	for (size_t i = 0; i < mat.size(); i++)
 	{
-		for (size_t j = 0; j < mat[i].size(); j++)
+		for (size_t j = 0; j <= i; j++)
 		{
 			if (i == j)
-				l_mat[i][j] = ii_element(l_mat, mat[i][j]);
-			else
-				l_mat[i][j] = ij_element(l_mat, mat[i][j]);;
+				(*l_mat)[i][j] = ii_element(*l_mat, mat[i][j], i);
+			else if (j < i)
+				(*l_mat)[i][j] = ij_element(*l_mat, mat[i][j], i, j);
 		}
 	}
-	return nullptr;
+	return l_mat;
 }
 
-double ii_element(std::vector<std::vector<double>>& t_mat, double a)
+double ii_element(std::vector<std::vector<double>>& t_mat, double a, size_t line)
 {
-	return 0.0;
+	double sum = 0;
+	for (int i = 0; i < line; i++)
+		sum += t_mat[line][i] * t_mat[line][i];
+	return std::sqrt(a - sum);
 }
 
-double ij_element(std::vector<std::vector<double>>& t_mat, double a)
+double ij_element(std::vector<std::vector<double>>& t_mat, double a, size_t line, size_t col)
 {
-	return 0.0;
+	double sum = 0;
+	for (int i = 0; i <= col; i++)
+		sum += t_mat[line][i] * t_mat[col][i];
+	return (a - sum) / t_mat[col][col];
 }
 
 void lab_2()
@@ -105,8 +112,12 @@ void lab_2()
 	std::cout << "Input n-dim:" << std::endl;
 	std::cin >> n;
 	std::cout << "Generate matrix : " << n << "x" << n << std::endl;
-	for(;;)
-		auto mat = generate_matrix(n, 1000);
+	auto mat = generate_matrix(n, 10);
+	print_mat(*mat);
+	auto S = cholesky(*mat);
+	print_mat(*S);
+	delete mat;
+	delete S;
 }
 
 double det(const std::vector<std::vector<double>>& mat)
@@ -128,29 +139,29 @@ double det(const std::vector<std::vector<double>>& mat)
 	return d;
 }
 
-std::vector<std::vector<double>>* generate_matrix(size_t n, size_t mod)
+std::vector<std::vector<double>>* generate_matrix(size_t n, size_t mod, double min, double max)
 {
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<double> dis(-1.0, 1.0);
+
+	Eigen::MatrixXd matx = Eigen::MatrixXd::NullaryExpr(n, n, [&]() {return dis(gen); });
+	Eigen::MatrixXd Q;
+	Eigen::MatrixXd D = Eigen::VectorXd::LinSpaced(n, min, max).asDiagonal();
+	matx *= mod;
+	while (matx.determinant() == 0)
+	{
+		matx.setRandom();
+		matx *= mod;
+	}
+	Eigen::HouseholderQR<Eigen::MatrixXd> qr(matx);
+	Q = qr.householderQ();
+	matx = Q * D * Q.transpose();
+
 	auto mat = new std::vector<std::vector<double>>(n, std::vector<double>(n, 0));
 	for (size_t i = 0; i < n; i++)
-	{
-		while (true)
-		{
-			auto sub_mat = get_submat(*mat, 0, 0, i, i);
-			if (det(*sub_mat) > 0) {
-				delete sub_mat;
-				break;
-			}
-			delete sub_mat;
-			for (size_t k = 0; k <= i; k++)
-				if (k <= i)
-				{
-					(*mat)[i][k] = int_random(mod);
-					(*mat)[k][i] = (*mat)[i][k];
-				}
-		}
-	}
-	sylvester_criterion(*mat);
-	print_mat(*mat);
+		for (size_t j = 0; j < n; j++)
+			(*mat)[i][j] = matx(i, j);
 	return mat;
 }
 
@@ -169,9 +180,10 @@ void print_mat(const std::vector<std::vector<double>>& mat)
 	for (size_t i = 0; i < mat.size(); i++)
 	{
 		for (size_t j = 0; j < mat.size(); j++)
-			std::cout << mat[i][j] << " ";
+			printf("%.8f ", mat[i][j]);
 		std::cout << std::endl;
 	}
+	std::cout << std::endl;
 }
 
 bool sylvester_criterion(const std::vector<std::vector<double>>& mat)
@@ -205,8 +217,8 @@ std::vector<std::vector<double>>* get_submat(const std::vector<std::vector<doubl
 	return sub_mat;
 }
 
-int int_random(int mod)
+int int_random(int mod, bool positive)
 {
 	std::random_device rd;
-	return (rd() % mod) - (int)(mod / 2);
+	return (positive ? (rd() % mod) + 1 : (rd() % mod) - (int)(mod / 2));
 }
