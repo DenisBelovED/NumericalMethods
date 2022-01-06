@@ -1,6 +1,5 @@
 #include "methods.h"
 #include <iostream>
-#include <Eigen/Dense>
 
 /*
 double half_division(double left_edge, double right_edge, double epsilon)
@@ -116,18 +115,29 @@ void lab_2()
 	std::cin >> n;
 	std::cout << "Input real D_min and D_max for generate condition number:" << std::endl;
 	std::cin >> min >> max;
-	std::cout << "Generate matrix A: " << n << "x" << n << std::endl;
-	auto mat = generate_matrix(n, 100, min, max);
-	print_mat(*mat);
-	auto S = cholesky(*mat);
+	std::cout << "Generate linear system Ax = b: " << n << "x" << n << std::endl;
+	auto A = generate_matrix(n, 100, min, max);
+	auto b = generate_vector(n, 10);
+	print_mat(*A, *b);
+
+	auto S = cholesky(*A);
 	auto S_t = transpose(*S);
 	std::cout << "L" << std::endl;
 	print_mat(*S);
 	std::cout << "L'" << std::endl;
 	print_mat(*S_t);
-	delete mat;
+
+	auto x = solve_system(*S, *b);
+	auto e_x = vector_to_eigen(*x);
+	std::cout << "Solve x:" << std::endl << e_x << std::endl;
+	std::cout << "A * x:" << std::endl;
+	std::cout << matrix_to_eigen(*A) * e_x << std::endl;
+
+	delete A;
 	delete S;
 	delete S_t;
+	delete b;
+	delete x;
 }
 
 double det(const std::vector<std::vector<double>>& mat)
@@ -167,14 +177,8 @@ std::vector<std::vector<double>>* generate_matrix(size_t n, size_t mod, double m
 	Eigen::HouseholderQR<Eigen::MatrixXd> qr(matx);
 	Q = qr.householderQ();
 	matx = Q * D * Q.transpose();
-
 	std::cout << "Condition number = " << matx.norm() * matx.reverse().norm() << std::endl;
-
-	auto mat = new std::vector<std::vector<double>>(n, std::vector<double>(n, 0));
-	for (size_t i = 0; i < n; i++)
-		for (size_t j = 0; j < n; j++)
-			(*mat)[i][j] = matx(i, j);
-	return mat;
+	return eigen_to_matrix(matx);
 }
 
 void line_sum(std::vector<std::vector<double>>& mat, size_t src_index, size_t dst_index, double k, bool transpose)
@@ -187,14 +191,22 @@ void line_sum(std::vector<std::vector<double>>& mat, size_t src_index, size_t ds
 			mat[dst_index][i] += k * mat[src_index][i];
 }
 
-void print_mat(const std::vector<std::vector<double>>& mat)
+void print_mat(const std::vector<std::vector<double>>& mat, const std::vector<double>& b)
 {
-	for (size_t i = 0; i < mat.size(); i++)
-	{
-		for (size_t j = 0; j < mat.size(); j++)
-			printf("%.8f ", mat[i][j]);
-		std::cout << std::endl;
-	}
+	if (b.empty())
+		for (size_t i = 0; i < mat.size(); i++)
+		{
+			for (size_t j = 0; j < mat.size(); j++)
+				printf("%.8f ", mat[i][j]);
+			std::cout << std::endl;
+		}
+	else
+		for (size_t i = 0; i < mat.size(); i++)
+		{
+			for (size_t j = 0; j < mat.size(); j++)
+				printf("%.8f ", mat[i][j]);
+			printf("| %.8f\n", b[i]);
+		}
 	std::cout << std::endl;
 }
 
@@ -227,6 +239,57 @@ std::vector<std::vector<double>>* get_submat(const std::vector<std::vector<doubl
 		for (size_t c = c_min; c <= c_max; c++)
 			(*sub_mat)[s][c] = mat[s][c];
 	return sub_mat;
+}
+
+std::vector<double>* generate_vector(size_t len, int mod, bool positive)
+{
+	auto v = new std::vector<double>();
+	for (size_t s = 0; s < len; s++)
+		(*v).push_back(int_random(mod, positive));
+	return v;
+}
+
+std::vector<double>* solve_system(const std::vector<std::vector<double>>& mat, const std::vector<double>& v)
+{
+	auto S = matrix_to_eigen(mat);
+	auto b = vector_to_eigen(v);
+	Eigen::VectorXd y = S.triangularView<Eigen::Lower>().solve(b);
+	Eigen::VectorXd x = S.transpose().triangularView<Eigen::Upper>().solve(y);
+	return eigen_to_vector(x);
+}
+
+Eigen::VectorXd vector_to_eigen(const std::vector<double>& v)
+{
+	Eigen::VectorXd e_v(v.size());
+	for (size_t i = 0; i < v.size(); i++)
+		e_v(i, 0) = v[i];
+	return e_v;
+}
+
+std::vector<double>* eigen_to_vector(Eigen::VectorXd v)
+{
+	auto v_v = new std::vector<double>(v.rows(), 0);
+	for (size_t i = 0; i < v.rows(); i++)
+		(*v_v)[i] = v(i, 0);
+	return v_v;
+}
+
+Eigen::MatrixXd matrix_to_eigen(const std::vector<std::vector<double>>& mat)
+{
+	Eigen::MatrixXd e_mat(mat.size(), mat[0].size());
+	for (size_t i = 0; i < mat.size(); i++)
+		for (size_t j = 0; j < mat[0].size(); j++)
+			e_mat(i, j) = mat[i][j];
+	return e_mat;
+}
+
+std::vector<std::vector<double>>* eigen_to_matrix(Eigen::MatrixXd mat)
+{
+	auto v_mat = new std::vector<std::vector<double>>(mat.rows(), std::vector<double>(mat.cols(), 0));
+	for (size_t i = 0; i < mat.rows(); i++)
+		for (size_t j = 0; j < mat.cols(); j++)
+			(*v_mat)[i][j] = mat(i, j);
+	return v_mat;
 }
 
 int int_random(int mod, bool positive)

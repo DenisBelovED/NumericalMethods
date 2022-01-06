@@ -4,6 +4,7 @@
 #include <math.h>
 #include <vector>
 #include <random>
+#include <Eigen/Dense>
 
 /*
 double half_division(double left_edge, double right_edge, double epsilon=1e-3);
@@ -31,7 +32,7 @@ std::vector<std::vector<double>>* generate_matrix(size_t n, size_t mod = 10, dou
 
 void line_sum(std::vector<std::vector<double>>& mat, size_t src_index, size_t dst_index, double k, bool transpose=false);
 
-void print_mat(const std::vector<std::vector<double>>& mat);
+void print_mat(const std::vector<std::vector<double>>& mat, const std::vector<double>& b = std::vector<double>());
 
 bool sylvester_criterion(const std::vector<std::vector<double>>& mat);
 
@@ -40,3 +41,15 @@ std::vector<std::vector<double>>* get_submat(const std::vector<std::vector<doubl
 int int_random(int mod, bool positive = false);
 
 std::vector<std::vector<double>>* transpose(const std::vector<std::vector<double>>& mat);
+
+std::vector<double>* generate_vector(size_t len, int mod, bool positive=false);
+
+std::vector<double>* solve_system(const std::vector<std::vector<double>>& mat, const std::vector<double>& v);
+
+Eigen::VectorXd vector_to_eigen(const std::vector<double>& v);
+
+std::vector<double>* eigen_to_vector(Eigen::VectorXd v);
+
+Eigen::MatrixXd matrix_to_eigen(const std::vector<std::vector<double>>& mat);
+
+std::vector<std::vector<double>>* eigen_to_matrix(Eigen::MatrixXd mat);
