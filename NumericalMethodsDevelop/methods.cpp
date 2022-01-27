@@ -266,8 +266,13 @@ void lab_2()
 	auto x_v_delta = solve_system(*S, *b_v_delta);
 	auto x_e_delta = vector_to_eigen(*x_v_delta);
 	auto b_e_delta = vector_to_eigen(*b_v_delta);
+	std::cout << "||delta_x|| = " << x_e_delta.norm() << std::endl;
+	std::cout << "||x|| = " << e_x.norm() << std::endl;
+	std::cout << "cond = " << A_e.maxCoeff() << std::endl;
+	std::cout << "||delta_b|| = " << b_e_delta.norm() << std::endl;
+	std::cout << "||b|| = " << b_e.norm() << std::endl;
 	double _left = x_e_delta.norm() / e_x.norm();
-	double _right = (A_e.norm() * A_e.norm()) * (b_e_delta.norm() / b_e.norm());
+	double _right = (A_e.maxCoeff() * A_e.maxCoeff()) * (b_e_delta.norm() / b_e.norm());
 	std::cout << _left << " <= " << _right << " - " << (_left <= _right ? "true" : "false") << std::endl;
 
 	delete A;
