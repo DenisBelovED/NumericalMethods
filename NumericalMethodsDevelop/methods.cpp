@@ -73,25 +73,6 @@ double simple_iteration_test(double left_edge, double right_edge, double x_0, do
 	return x_j;
 }
 
-double det(const std::vector<std::vector<double>>& mat)
-{
-	if (mat.size() == 1)
-		return mat[0][0];
-	if (mat.size() == 2)
-		return mat[0][0] * mat[1][1] - mat[1][0] * mat[0][1];
-	double d = 0;
-	for (size_t j = 0; j < mat.size(); j++)
-	{
-		std::vector<std::vector<double>> sub_mat(mat.size() - 1, std::vector<double>());
-		for (size_t i = 1; i < mat.size(); i++)
-			for (size_t k = 0; k < mat.size(); k++)
-				if (k != j)
-					sub_mat[i-1].push_back(mat[i][k]);
-		d += pow(-1, j) * mat[0][j] * det(sub_mat);
-	}
-	return d;
-}
-
 void line_sum(std::vector<std::vector<double>>& mat, size_t src_index, size_t dst_index, double k, bool transpose)
 {
 	if (transpose)
@@ -133,6 +114,49 @@ std::vector<std::vector<double>>* get_submat(const std::vector<std::vector<doubl
 	return sub_mat;
 }
 */
+
+double det(const std::vector<std::vector<double>>& mat)
+{
+	if (mat.size() == 1)
+		return mat[0][0];
+	if (mat.size() == 2)
+		return mat[0][0] * mat[1][1] - mat[1][0] * mat[0][1];
+	double d = 0;
+	for (size_t j = 0; j < mat.size(); j++)
+	{
+		std::vector<std::vector<double>> sub_mat(mat.size() - 1, std::vector<double>());
+		for (size_t i = 1; i < mat.size(); i++)
+			for (size_t k = 0; k < mat.size(); k++)
+				if (k != j)
+					sub_mat[i - 1].push_back(mat[i][k]);
+		d += pow(-1, j) * mat[0][j] * det(sub_mat);
+	}
+	return d;
+}
+
+
+bool sylvester_criterion(const std::vector<std::vector<double>>& mat)
+{
+	std::cout << "Sylvester criterion:" << std::endl;
+	double d = mat[0][0];
+	std::cout << "Minor 1x1 = " << d << std::endl;
+	if (d <= 0)
+		return false;
+	for (size_t i = 1; i < mat.size(); i++)
+	{
+		std::vector<std::vector<double>> sub_mat(i + 1, std::vector<double>(i + 1, 0));
+		for (size_t g = 0; g < i + 1; g++)
+			for (size_t k = 0; k < i + 1; k++)
+				sub_mat[g][k] = mat[g][k];
+		d = det(sub_mat);
+		std::cout << "Minor " << i + 1 << "x" << i + 1 << " = " << d << std::endl;
+		if (d <= 0)
+			return false;
+	}
+	std::cout << "Succsess!" << std::endl;
+	return true;
+}
+
 
 std::vector<std::vector<double>>* cholesky(std::vector<std::vector<double>>& mat)
 {
@@ -181,7 +205,7 @@ void dependency(double min, double max, size_t n, double stride)
 		auto e_x = vector_to_eigen(*x);
 		auto A_e = matrix_to_eigen(*A);
 		auto b_e = vector_to_eigen(*b);
-		Eigen::VectorXd x_c = A_e.completeOrthogonalDecomposition().solve(b_e);
+		auto x_c = A_e.reverse() * b_e;
 		double cond = A_e.norm() * A_e.norm();
 
 		fprintf(out, "%.16f,%.16f,%.16f\n", cond, (x_c - e_x).norm(), (A_e * e_x - b_e).norm());
@@ -206,9 +230,15 @@ void lab_2()
 	std::cin >> min >> max;
 	std::cout << "Generate linear system Ax = b: " << n << "x" << n << std::endl;
 	auto A = generate_matrix(n, 100, min, max);
+	if (!sylvester_criterion(*A))
+	{
+		std::cout << "Matrix not positive defined" << std::endl;
+		return;
+	}
 	auto b = generate_vector(n, 10);
 	auto A_e = matrix_to_eigen(*A);
 	auto b_e = vector_to_eigen(*b);
+	auto x_c = A_e.reverse() * b_e;
 	std::cout << "Condition number = " << A_e.norm() * A_e.norm() << std::endl;
 	print_mat(*A, *b);
 
@@ -224,7 +254,6 @@ void lab_2()
 	std::cout << "Solve x:" << std::endl << e_x << std::endl;
 	std::cout << "A * x:" << std::endl;
 	std::cout << matrix_to_eigen(*A) * e_x << std::endl;
-	Eigen::VectorXd x_c = A_e.completeOrthogonalDecomposition().solve(b_e);
 
 	std::cout << "||x - x*|| = " << (x_c - e_x).norm() << std::endl;
 	std::cout << "||Ax - b|| = " << (A_e * e_x - b_e).norm() << std::endl;
