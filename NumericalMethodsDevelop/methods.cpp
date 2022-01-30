@@ -205,7 +205,7 @@ void dependency(double min, double max, size_t n, double stride)
 		auto e_x = vector_to_eigen(*x);
 		auto A_e = matrix_to_eigen(*A);
 		auto b_e = vector_to_eigen(*b);
-		auto x_c = A_e.reverse() * b_e;
+		auto x_c = A_e.inverse() * b_e;
 		double cond = A_e.norm() * A_e.norm();
 
 		fprintf(out, "%.16f,%.16f,%.16f\n", cond, (x_c - e_x).norm(), (A_e * e_x - b_e).norm());
@@ -238,8 +238,9 @@ void lab_2()
 	auto b = generate_vector(n, 10);
 	auto A_e = matrix_to_eigen(*A);
 	auto b_e = vector_to_eigen(*b);
-	auto x_c = A_e.reverse() * b_e;
-	std::cout << "Condition number = " << A_e.norm() * A_e.norm() << std::endl;
+	auto x_c = A_e.inverse() * b_e;
+	double A_cond = A_e.norm() * A_e.inverse().norm();
+	std::cout << "Condition number = " << A_cond << std::endl;
 	print_mat(*A, *b);
 
 	auto S = cholesky(*A);
@@ -252,36 +253,28 @@ void lab_2()
 	auto x = solve_system(*S, *b);
 	auto e_x = vector_to_eigen(*x);
 	std::cout << "Solve x:" << std::endl << e_x << std::endl;
-	std::cout << "A * x:" << std::endl;
-	std::cout << matrix_to_eigen(*A) * e_x << std::endl;
-
 	std::cout << "||x - x*|| = " << (x_c - e_x).norm() << std::endl;
 	std::cout << "||Ax - b|| = " << (A_e * e_x - b_e).norm() << std::endl;
 
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::uniform_real_distribution<double> dis(-1.0, 1.0);
-	auto e_delta = Eigen::VectorXd::NullaryExpr(n, [&]() {return dis(gen) / 100; });
-	auto b_v_delta = eigen_to_vector(e_delta + b_e);
-	auto x_v_delta = solve_system(*S, *b_v_delta);
-	auto x_e_delta = vector_to_eigen(*x_v_delta);
-	auto b_e_delta = vector_to_eigen(*b_v_delta);
+	auto b_e_delta = Eigen::VectorXd::NullaryExpr(n, [&]() {return dis(gen) / 100; });
+	auto x_e_delta = A_e.inverse() * b_e_delta;
 	std::cout << "||delta_x|| = " << x_e_delta.norm() << std::endl;
 	std::cout << "||x|| = " << e_x.norm() << std::endl;
-	std::cout << "cond = " << A_e.maxCoeff() << std::endl;
+	std::cout << "cond = " << A_cond << std::endl;
 	std::cout << "||delta_b|| = " << b_e_delta.norm() << std::endl;
 	std::cout << "||b|| = " << b_e.norm() << std::endl;
 	double _left = x_e_delta.norm() / e_x.norm();
-	double _right = (A_e.maxCoeff() * A_e.maxCoeff()) * (b_e_delta.norm() / b_e.norm());
-	std::cout << _left << " <= " << _right << " - " << (_left <= _right ? "true" : "false") << std::endl;
+	double _right = b_e_delta.norm() / b_e.norm();
+	std::cout << _left << " <= " << A_cond << "*" << _right << " - " << (_left <= A_cond * _right ? "true" : "false") << std::endl;
 
 	delete A;
 	delete S;
 	delete S_t;
 	delete b;
 	delete x;
-	delete x_v_delta;
-	delete b_v_delta;
 }
 
 std::vector<std::vector<double>>* generate_matrix(size_t n, size_t mod, double min, double max)
