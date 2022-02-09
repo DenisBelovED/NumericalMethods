@@ -397,7 +397,6 @@ void lab_3()
 	std::cout << "det(A) = " << A_e.determinant() << std::endl;
 	print_mat(*A, *b);
 
-	std::cout << "SOR" << std::endl << std::endl;
 	auto pair = SOR(*A, *b, beta, 1e-3);
 	auto x = pair->first;
 	auto iters = pair->second;
@@ -405,10 +404,8 @@ void lab_3()
 	std::cout << "Solve x:" << std::endl << e_x << std::endl;
 	auto dx = eigen_to_vector(x_c);
 	auto nx = eigen_to_vector(A_e * e_x - b_e);
-	std::cout << "||x - x*||inf = " << matrix_inf_norm(v_sub(*x, *dx)) << std::endl;
-	std::cout << "||Ax - b||inf = " << matrix_inf_norm(*nx) << std::endl;
-	std::cout << "||x - x*|| = " << (x_c - e_x).norm() << std::endl;
-	std::cout << "||Ax - b|| = " << (A_e * e_x - b_e).norm() << std::endl;
+	std::cout << "||x - x*|| = " << matrix_inf_norm(v_sub(*x, *dx)) << std::endl;
+	std::cout << "||Ax - b|| = " << matrix_inf_norm(*nx) << std::endl;
 	std::cout << "Iterations = " << iters << std::endl;
 
 	delete A;
@@ -450,11 +447,9 @@ std::pair<std::vector<double>*, double>* SOR(
 	auto x0 = new std::vector<double>(mat.size(), 0);
 	auto x1 = new std::vector<double>(mat.size(), 1);
 	double iters = 0;
-	double delta = matrix_inf_norm(v_sub(*x0, *x1));
-	while (delta >= eps)
+	while (matrix_inf_norm(v_sub(*x0, *x1)) >= eps)
 	{
 		iters += 1;
-		std::cout << delta << " = delta " << iters << " = iters" << std::endl;
 		for (size_t i = 0; i < (*x0).size(); i++)
 			(*x0)[i] = (*x1)[i];
 		for (size_t i = 0; i < mat.size(); i++)
@@ -471,7 +466,6 @@ std::pair<std::vector<double>*, double>* SOR(
 			}
 			(*x1)[i] += beta * b[i] / mat[i][i];
 		}
-		delta = matrix_inf_norm(v_sub(*x0, *x1));
 	}
 	auto res = new std::pair<std::vector<double>*, double>(x1, iters);
 	return res;
