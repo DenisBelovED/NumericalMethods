@@ -86,3 +86,36 @@ std::vector<double>* eigen_to_vector(Eigen::VectorXd v);
 Eigen::MatrixXd matrix_to_eigen(const std::vector<std::vector<double>>& mat);
 
 std::vector<std::vector<double>>* eigen_to_matrix(Eigen::MatrixXd mat);
+
+// Точка входа для 3 лабораторной
+void lab_3();
+
+// Метод для перебора определителя и построения норм ошибок и невязки, пишет результаты в файл out.csv
+// Принимает начало и конец отрезка [min, max] для линейного распределения значений на главной диагонали
+// n - размерность матрицы, stride - шаг для роста определителя
+void dependency_3(double min, double max, size_t n, double stride = 1);
+
+// Метод релаксации
+// mat -  квадратная, симметричная, положительно определённая матрица
+// b - вектор свободных значений в СЛАУ
+// beta - коэффициент релаксации из отрезка (0, 2)
+// eps - точность решения
+// Возвращает пару элементов: вектор и число итераций
+std::pair<std::vector<double>*, double>* SOR(
+	const std::vector<std::vector<double>>& mat,
+	const std::vector<double>& b,
+	double beta,
+	double eps
+);
+
+// Вычитание двух векторов
+std::vector<double> v_sub(const std::vector<double>& x0, const std::vector<double>& x1);
+
+// Вычисление бесконечной нормы в матрице
+double matrix_inf_norm(const std::vector<std::vector<double>>& mat);
+
+// Вычисление бесконечной нормы вектора
+double matrix_inf_norm(const std::vector<double>& v);
+
+// Вернёт максимальный элемент вектора
+double max(const std::vector<double>& v);

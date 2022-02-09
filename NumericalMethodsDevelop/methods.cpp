@@ -368,6 +368,152 @@ std::vector<std::vector<double>>* eigen_to_matrix(Eigen::MatrixXd mat)
 	return v_mat;
 }
 
+void lab_3()
+{
+	size_t n;
+	double min, max, beta;
+	std::cout << "Input n-dim:" << std::endl;
+	std::cin >> n;
+	std::cout << "Input real D_11 and D_nn for generate determinant:" << std::endl;
+	std::cin >> min >> max;
+	std::cout << "Input real beta between (0, 2):" << std::endl;
+	std::cin >> beta;
+	if (max - min <= 0)
+	{
+		std::cout << "Determinant must be > 0" << std::endl;
+		return;
+	}
+	std::cout << "Generate linear system Ax = b: " << n << "x" << n << std::endl;
+	auto A = generate_matrix(n, 100, min, max);
+	if (!sylvester_criterion(*A))
+	{
+		std::cout << "Matrix not positive defined" << std::endl;
+		return;
+	}
+	auto b = generate_vector(n, 10);
+	auto A_e = matrix_to_eigen(*A);
+	auto b_e = vector_to_eigen(*b);
+	auto x_c = A_e.inverse() * b_e;
+	std::cout << "det(A) = " << A_e.determinant() << std::endl;
+	print_mat(*A, *b);
+
+	std::cout << "SOR" << std::endl << std::endl;
+	auto pair = SOR(*A, *b, beta, 1e-3);
+	auto x = pair->first;
+	auto iters = pair->second;
+	auto e_x = vector_to_eigen(*x);
+	std::cout << "Solve x:" << std::endl << e_x << std::endl;
+	auto dx = eigen_to_vector(x_c);
+	auto nx = eigen_to_vector(A_e * e_x - b_e);
+	std::cout << "||x - x*||inf = " << matrix_inf_norm(v_sub(*x, *dx)) << std::endl;
+	std::cout << "||Ax - b||inf = " << matrix_inf_norm(*nx) << std::endl;
+	std::cout << "||x - x*|| = " << (x_c - e_x).norm() << std::endl;
+	std::cout << "||Ax - b|| = " << (A_e * e_x - b_e).norm() << std::endl;
+	std::cout << "Iterations = " << iters << std::endl;
+
+	delete A;
+	delete b;
+	delete x;
+	delete pair;
+	delete dx;
+	delete nx;
+}
+
+void dependency_3(double min, double max, size_t n, double stride)
+{
+}
+
+std::pair<std::vector<double>*, double>* SOR(
+	const std::vector<std::vector<double>>& mat,
+	const std::vector<double>& b,
+	double beta,
+	double eps
+)
+{
+	if ((0 < beta) && (beta < 1))
+		std::cout << beta << " - lower relaxation" << std::endl;
+	else if ((1 < beta) && (beta < 2))
+		std::cout << beta << " - upper relaxation" << std::endl;
+	else if (beta == 1)
+		std::cout << beta << " - Seidel method" << std::endl;
+	else
+	{
+		std::cout << beta << " - must be in (0, 2)" << std::endl;
+		return nullptr;
+	}
+	if (eps <= 0)
+	{
+		std::cout << eps << " - must be > 0" << std::endl;
+		return nullptr;
+	}
+
+	auto x0 = new std::vector<double>(mat.size(), 0);
+	auto x1 = new std::vector<double>(mat.size(), 1);
+	double iters = 0;
+	double delta = matrix_inf_norm(v_sub(*x0, *x1));
+	while (delta >= eps)
+	{
+		iters += 1;
+		std::cout << delta << " = delta " << iters << " = iters" << std::endl;
+		for (size_t i = 0; i < (*x0).size(); i++)
+			(*x0)[i] = (*x1)[i];
+		for (size_t i = 0; i < mat.size(); i++)
+		{
+			(*x1)[i] = 0;
+			for (size_t j = 0; j < mat.size(); j++)
+			{
+				if (i == j)
+					(*x1)[i] += (1 - beta) * (*x0)[j];
+				if (i < j)
+					(*x1)[i] -= beta * (*x0)[j] * mat[i][j] / mat[i][i];
+				if (i > j)
+					(*x1)[i] -= beta * (*x1)[j] * mat[i][j] / mat[i][i];
+			}
+			(*x1)[i] += beta * b[i] / mat[i][i];
+		}
+		delta = matrix_inf_norm(v_sub(*x0, *x1));
+	}
+	auto res = new std::pair<std::vector<double>*, double>(x1, iters);
+	return res;
+}
+
+std::vector<double> v_sub(const std::vector<double>& x0, const std::vector<double>& x1)
+{
+	auto new_v = std::vector<double>();
+	for (size_t i = 0; i < x0.size(); i++)
+		new_v.push_back(x0[i] - x1[i]);
+	return new_v;
+}
+
+double matrix_inf_norm(const std::vector<std::vector<double>>& mat)
+{
+	auto v = std::vector<double>();
+	for (size_t i = 0; i < mat.size(); i++)
+	{
+		v.push_back(0);
+		for (size_t j = 0; j < mat[i].size(); j++)
+			v[i] += std::abs(mat[i][j]);
+	}
+	return max(v);
+}
+
+double matrix_inf_norm(const std::vector<double>& v)
+{
+	auto new_v = std::vector<double>();
+	for (size_t i = 0; i < v.size(); i++)
+		new_v.push_back(std::abs(v[i]));
+	return max(new_v);
+}
+
+double max(const std::vector<double>& v)
+{
+	double m = std::numeric_limits<double>::min();
+	for (auto e : v)
+		if (m < e)
+			m = e;
+	return m;
+}
+
 int int_random(int mod, bool positive)
 {
 	std::random_device rd;

@@ -2,8 +2,9 @@
 
 int main()
 {
-	lab_2();
+	//lab_2();
 	//dependency(1, 1000000, 100, 100);
+	lab_3();
 	system("pause");
 	return 0;
 }
