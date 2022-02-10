@@ -416,24 +416,46 @@ void lab_3()
 	delete nx;
 }
 
-void dependency_3(double min, double max, size_t n, double stride)
+void dependency_3(double min_eps, double max_eps, size_t n, double beta)
 {
+	FILE* out = fopen("out3.csv", "w");
+	fprintf(out, "eps,||x - x*||,||Ax - b||,iters\n");
+
+	for (double eps = min_eps; eps < max_eps; eps += min_eps)
+	{
+		auto A = generate_matrix(n, 100, 1, 100);
+		auto b = generate_vector(n, 10);
+		auto A_e = matrix_to_eigen(*A);
+		auto b_e = vector_to_eigen(*b);
+		auto x_c = A_e.inverse() * b_e;
+		auto pair = SOR(*A, *b, beta, eps);
+		auto x = pair->first;
+		auto iters = pair->second;
+		auto e_x = vector_to_eigen(*x);
+		auto dx = eigen_to_vector(x_c);
+		auto discrepancy = eigen_to_vector(A_e * e_x - b_e);
+
+		fprintf(out, "%.16f,%.16f,%.16f,%d\n", eps, matrix_inf_norm(v_sub(*x, *dx)), matrix_inf_norm(*discrepancy), iters);
+
+		delete A;
+		delete b;
+		delete x;
+		delete pair;
+		delete dx;
+		delete discrepancy;
+	}
+
+	fclose(out);
 }
 
-std::pair<std::vector<double>*, double>* SOR(
+std::pair<std::vector<double>*, size_t>* SOR(
 	const std::vector<std::vector<double>>& mat,
 	const std::vector<double>& b,
 	double beta,
 	double eps
 )
 {
-	if ((0 < beta) && (beta < 1))
-		std::cout << beta << " - lower relaxation" << std::endl;
-	else if ((1 < beta) && (beta < 2))
-		std::cout << beta << " - upper relaxation" << std::endl;
-	else if (beta == 1)
-		std::cout << beta << " - Seidel method" << std::endl;
-	else
+	if ((beta <= 0) || (2 <= beta))
 	{
 		std::cout << beta << " - must be in (0, 2)" << std::endl;
 		return nullptr;
@@ -446,7 +468,7 @@ std::pair<std::vector<double>*, double>* SOR(
 
 	auto x0 = new std::vector<double>(mat.size(), 0);
 	auto x1 = new std::vector<double>(mat.size(), 1);
-	double iters = 0;
+	size_t iters = 0;
 	while (matrix_inf_norm(v_sub(*x0, *x1)) >= eps)
 	{
 		iters += 1;
@@ -467,7 +489,8 @@ std::pair<std::vector<double>*, double>* SOR(
 			(*x1)[i] += beta * b[i] / mat[i][i];
 		}
 	}
-	auto res = new std::pair<std::vector<double>*, double>(x1, iters);
+	auto res = new std::pair<std::vector<double>*, size_t>(x1, iters);
+	delete x0;
 	return res;
 }
 

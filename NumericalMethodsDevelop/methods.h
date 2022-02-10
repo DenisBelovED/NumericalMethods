@@ -90,10 +90,11 @@ std::vector<std::vector<double>>* eigen_to_matrix(Eigen::MatrixXd mat);
 // Точка входа для 3 лабораторной
 void lab_3();
 
-// Метод для перебора определителя и построения норм ошибок и невязки, пишет результаты в файл out.csv
-// Принимает начало и конец отрезка [min, max] для линейного распределения значений на главной диагонали
-// n - размерность матрицы, stride - шаг для роста определителя
-void dependency_3(double min, double max, size_t n, double stride = 1);
+// Метод для перебора точности и логирования бесконечных норм ошибки, невязки, числа итераций.
+// Пишет результаты в файл out.csv
+// Принимает начало и конец диапазона [min_eps, max_eps] для итераций по нему с шагом min_eps
+// n - размерность матрицы, beta - параметр релаксации
+void dependency_3(double min_eps, double max_eps, size_t n, double beta = 1.5);
 
 // Метод релаксации
 // mat -  квадратная, симметричная, положительно определённая матрица
@@ -101,7 +102,7 @@ void dependency_3(double min, double max, size_t n, double stride = 1);
 // beta - коэффициент релаксации из отрезка (0, 2)
 // eps - точность решения
 // Возвращает пару элементов: вектор и число итераций
-std::pair<std::vector<double>*, double>* SOR(
+std::pair<std::vector<double>*, size_t>* SOR(
 	const std::vector<std::vector<double>>& mat,
 	const std::vector<double>& b,
 	double beta,
