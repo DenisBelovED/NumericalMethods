@@ -1,4 +1,4 @@
-#include "methods.h"
+﻿#include "methods.h"
 
 /*
 double half_division(double left_edge, double right_edge, double epsilon)
@@ -277,15 +277,21 @@ void lab_2()
 	delete x;
 }
 
-std::vector<std::vector<double>>* generate_matrix(size_t n, size_t mod, double min, double max)
+std::vector<std::vector<double>>* generate_matrix(size_t n, size_t mod, double min, double max, Eigen::MatrixXd* diag)
 {
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::uniform_real_distribution<double> dis(-1.0, 1.0);
 
 	Eigen::MatrixXd matx = Eigen::MatrixXd::NullaryExpr(n, n, [&]() {return dis(gen); });
-	Eigen::MatrixXd Q;
-	Eigen::MatrixXd D = Eigen::VectorXd::LinSpaced(n, min, max).asDiagonal();
+	Eigen::MatrixXd Q, D;
+	if (diag == nullptr)
+		D = Eigen::VectorXd::LinSpaced(n, min, max).asDiagonal();
+	else
+	{
+		*diag = Eigen::VectorXd::LinSpaced(n, min, max).asDiagonal();
+		D = *diag;
+	}
 	matx *= mod;
 	while (matx.determinant() == 0)
 	{
@@ -529,6 +535,53 @@ double max(const std::vector<double>& v)
 		if (m < e)
 			m = e;
 	return m;
+}
+
+void lab_4()
+{
+	size_t n;
+	double min, max;
+	std::cout << "Input n-dim:" << std::endl;
+	std::cin >> n;
+	std::cout << "Input E_1 and E_n for generate [E_1, E_n] linspace eigen numbers:" << std::endl;
+	std::cin >> min >> max;
+	auto c_eigen = new Eigen::MatrixXd();
+	auto A = generate_matrix(n, 100, min, max, c_eigen);
+	auto A_e = matrix_to_eigen(*A);
+
+	std::cout << "||eigen - eigen*|| = \n" << *c_eigen << "\n\n" << A_e;
+	//std::cout << "||x - x*|| = " << matrix_inf_norm(v_sub(*x, *dx)) << std::endl;
+	//std::cout << "||Ax - eigen*x|| = " << matrix_inf_norm(*nx) << std::endl;
+	//std::cout << "Iterations = " << iters << std::endl;
+	delete A;
+}
+
+void dependency_4(double min_eps, double max_eps, size_t n)
+{
+
+}
+
+std::vector<std::vector<double>>* matrix_mul(const std::vector<std::vector<double>>& a, const std::vector<std::vector<double>>& b)
+{
+	auto m = new std::vector<std::vector<double>>(a.size(), std::vector<double>(b[0].size(), 0));
+	for (size_t i = 0; i < a.size(); i++)
+		for (size_t j = 0; j < b[0].size(); j++)
+			for (size_t k = 0; k < a[0].size(); k++)
+				(*m)[i][j] += a[i][k] * b[k][j];
+	return m;
+}
+
+std::vector<std::vector<double>>* Jacobi_rotation(std::vector<std::vector<double>>& mat)
+{
+	return nullptr;
+}
+
+std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector<double>>*>*>* Jacobi(
+	const std::vector<std::vector<double>> mat,
+	double eps
+)
+{
+	return nullptr;
 }
 
 int int_random(int mod, bool positive)
