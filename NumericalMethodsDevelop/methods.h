@@ -152,3 +152,11 @@ std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector
 	const std::vector<std::vector<double>> mat,
 	double eps
 );
+
+// Вычисление суммы квадратов элементов вне диагонали
+double ndss(const std::vector<std::vector<double>>& mat);
+
+// Выбор оптимального элемента для обнуления
+// mat - матрица для выбора
+// Метод вернёт пару индексов (i строки, j столбца)
+std::pair<size_t, size_t> select_opt(const std::vector<std::vector<double>>& mat);

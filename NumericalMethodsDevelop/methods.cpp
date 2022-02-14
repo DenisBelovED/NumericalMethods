@@ -548,8 +548,9 @@ void lab_4()
 	auto c_eigen = new Eigen::MatrixXd();
 	auto A = generate_matrix(n, 100, min, max, c_eigen);
 	auto A_e = matrix_to_eigen(*A);
+	auto res_pair = Jacobi(*A, 1e-3);
 
-	std::cout << "||eigen - eigen*|| = \n" << *c_eigen << "\n\n" << A_e;
+	std::cout << "||eigen - eigen*|| = \n" << *c_eigen << "\n\n" << A_e << "\n\n" << p.first << " " << p.second;
 	//std::cout << "||x - x*|| = " << matrix_inf_norm(v_sub(*x, *dx)) << std::endl;
 	//std::cout << "||Ax - eigen*x|| = " << matrix_inf_norm(*nx) << std::endl;
 	//std::cout << "Iterations = " << iters << std::endl;
@@ -581,7 +582,57 @@ std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector
 	double eps
 )
 {
+	auto A = new std::vector<std::vector<double>>(mat.size(), std::vector<double>(mat.size(), 0));
+	auto rotation_matrixes = new std::vector<std::vector<std::vector<double>>*>();
+
+	for (size_t i = 0; i < mat.size(); i++)
+		for (size_t j = 0; j < mat[0].size(); j++)
+			(*A)[i][j] = mat[i][j];
+
+	while (ndss(*A) >= eps)
+	{
+
+	}
+
+	auto res = new std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector<double>>*>*>(A, rotation_matrixes);
 	return nullptr;
+}
+
+double ndss(const std::vector<std::vector<double>>& mat)
+{
+	double sum = 0;
+	for (size_t i = 0; i < mat.size(); i++)
+		for (size_t j = 0; j < mat[0].size(); j++)
+			if (i != j)
+				sum += mat[i][j] * mat[i][j];
+	return sum;
+}
+
+std::pair<size_t, size_t> select_opt(const std::vector<std::vector<double>>& mat)
+{
+	size_t opt_i = 0, opt_j = 0;
+	double r_i, max_r = 0;
+	for (size_t i = 0; i < mat.size(); i++)
+	{
+		r_i = 0;
+		for (size_t j = 0; j < mat[0].size(); j++)
+			if (i != j)
+				r_i += mat[i][j] * mat[i][j];
+		if (max_r < r_i)
+		{
+			max_r = r_i;
+			opt_i = i;
+		}
+	}
+	max_r = 0;
+	for (size_t j = 0; j < mat[0].size(); j++)
+		if ((j != opt_i) && (max_r < std::abs(mat[opt_i][j])))
+		{
+			opt_j = j;
+			max_r = std::abs(mat[opt_i][j]);
+		}
+
+	return std::pair<size_t, size_t>(opt_i, opt_j);
 }
 
 int int_random(int mod, bool positive)
