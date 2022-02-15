@@ -547,13 +547,22 @@ void lab_4()
 	std::cin >> min >> max;
 	auto c_eigen = new Eigen::MatrixXd();
 	auto A = generate_matrix(n, 100, min, max, c_eigen);
+	std::cout << "Generated matrix:\n";
+	print_mat(*A);
 	auto A_e = matrix_to_eigen(*A);
 	auto res_pair = Jacobi(*A, 1e-3);
+	auto eigen_e = matrix_to_eigen(*res_pair->first);
+	auto rotation_vectors = res_pair->second;
+	auto d1 = eigen_e.diagonal();
+	auto d2 = (*c_eigen).diagonal();
+	std::sort(d1.begin(), d1.end(), std::less<double>());
+	std::sort(d2.begin(), d2.end(), std::less<double>());
 
-	std::cout << "||eigen - eigen*|| = \n" << *c_eigen << "\n\n" << A_e << "\n\n" << p.first << " " << p.second;
+	std::cout << "Eigen values:\n" << d1 << std::endl;
+	std::cout << "||eigen - eigen*|| = " << (d1 - d2).norm() << std::endl;
 	//std::cout << "||x - x*|| = " << matrix_inf_norm(v_sub(*x, *dx)) << std::endl;
 	//std::cout << "||Ax - eigen*x|| = " << matrix_inf_norm(*nx) << std::endl;
-	//std::cout << "Iterations = " << iters << std::endl;
+	std::cout << "Iterations = " << rotation_vectors->size() << std::endl;
 	delete A;
 }
 
@@ -572,9 +581,36 @@ std::vector<std::vector<double>>* matrix_mul(const std::vector<std::vector<doubl
 	return m;
 }
 
-std::vector<std::vector<double>>* Jacobi_rotation(std::vector<std::vector<double>>& mat)
+std::vector<std::vector<double>>* Jacobi_rotation(
+	std::vector<std::vector<double>>& mat,
+	double sin_phi,
+	double cos_phi,
+	size_t opt_i,
+	size_t opt_j
+)
 {
-	return nullptr;
+	auto rot_matrix = new std::vector<std::vector<double>>(mat.size(), std::vector<double>(mat.size(), 0));
+	for (size_t i = 0; i < mat.size(); i++)
+		(*rot_matrix)[i][i] = 1;
+	(*rot_matrix)[opt_i][opt_i] = cos_phi;
+	(*rot_matrix)[opt_j][opt_j] = cos_phi;
+	(*rot_matrix)[opt_i][opt_j] = -sin_phi;
+	(*rot_matrix)[opt_j][opt_i] = sin_phi;
+	for (size_t k = 0; k < mat.size(); k++)
+	{
+		 double x = cos_phi * mat[opt_i][k] + sin_phi * mat[opt_j][k];
+		 double y = -sin_phi * mat[opt_i][k] + cos_phi * mat[opt_j][k];
+		 mat[opt_i][k] = x;
+		 mat[opt_j][k] = y;
+	}
+	for (size_t k = 0; k < mat.size(); k++)
+	{
+		double x = cos_phi * mat[k][opt_i] + sin_phi * mat[k][opt_j];
+		double y = -sin_phi * mat[k][opt_i] + cos_phi * mat[k][opt_j];
+		mat[k][opt_i] = x;
+		mat[k][opt_j] = y;
+	}
+	return rot_matrix;
 }
 
 std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector<double>>*>*>* Jacobi(
@@ -584,6 +620,7 @@ std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector
 {
 	auto A = new std::vector<std::vector<double>>(mat.size(), std::vector<double>(mat.size(), 0));
 	auto rotation_matrixes = new std::vector<std::vector<std::vector<double>>*>();
+	size_t iters = 0;
 
 	for (size_t i = 0; i < mat.size(); i++)
 		for (size_t j = 0; j < mat[0].size(); j++)
@@ -591,11 +628,19 @@ std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector
 
 	while (ndss(*A) >= eps)
 	{
-
+		auto opt = select_opt(*A);
+		size_t opt_i = opt.first, opt_j = opt.second;
+		double sin_phi = 1, cos_phi = 0;
+		if ((*A)[opt_i][opt_i] != (*A)[opt_j][opt_j])
+		{
+			double tan_2phi = 2 * (*A)[opt_i][opt_j] / ((*A)[opt_i][opt_i] - (*A)[opt_j][opt_j]);
+			sin_phi = ((tan_2phi > 0) - (tan_2phi < 0)) * sqrt(0.5 * (1 - (1 / sqrt(1 + tan_2phi * tan_2phi))));
+			cos_phi = sqrt(0.5 * (1 + (1 / sqrt(1 + tan_2phi * tan_2phi))));
+		}
+		rotation_matrixes->push_back(Jacobi_rotation(*A, sin_phi, cos_phi, opt_i, opt_j));
 	}
-
 	auto res = new std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector<double>>*>*>(A, rotation_matrixes);
-	return nullptr;
+	return res;
 }
 
 double ndss(const std::vector<std::vector<double>>& mat)
@@ -631,7 +676,8 @@ std::pair<size_t, size_t> select_opt(const std::vector<std::vector<double>>& mat
 			opt_j = j;
 			max_r = std::abs(mat[opt_i][j]);
 		}
-
+	//if(opt_i > opt_j)
+	//	return std::pair<size_t, size_t>(opt_j, opt_i);
 	return std::pair<size_t, size_t>(opt_i, opt_j);
 }
 

@@ -142,7 +142,10 @@ std::vector<std::vector<double>>* matrix_mul(const std::vector<std::vector<doubl
 // Метод реализующий обнуление оптимального элемента a_ij
 // Возвращает указатель на матрицу поворота
 // Изменяет mat в ходе обнуления a_ij
-std::vector<std::vector<double>>* Jacobi_rotation(std::vector<std::vector<double>>& mat);
+// mat - матрица
+// sin_phi, cos_phi - углы для матрицы поворота
+// opt_i, opt_j - индексы оптимального элемента
+std::vector<std::vector<double>>* Jacobi_rotation(std::vector<std::vector<double>>& mat, double sin_phi, double cos_phi, size_t opt_i, size_t opt_j);
 
 // Метод вращений Якоби
 // mat -  квадратная, симметричная матрица
