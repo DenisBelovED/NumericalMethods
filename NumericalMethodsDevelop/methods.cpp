@@ -564,9 +564,9 @@ void lab_4()
 		rotation_matrix_columns_map[d1(i)] = i;
 	auto d2 = (*c_eigen).diagonal();
 
+	std::cout << "Eigen value : eigen vector\n";
 	for (size_t i = 0; i < d1.size(); i++)
 	{
-		std::cout << "Eigen value : eigen vector\n";
 		std::cout << d1(i) << " : (" << T.col(i).transpose() << ")'\n";
 		std::cout << "|| A*x - " << d1(i) << "*x || = " << (A_e * T.col(i) - d1(i) * T.col(i)).norm() << "\n";
 	}
@@ -590,9 +590,7 @@ void lab_4()
 	}
 	std::cout << "\nEigen value and corresponding || x - *x ||:\n";
 	for (size_t i = 0; i < d1.size(); i++)
-	{
-		std::cout << d2(i) << " : " << (e_v[i] - T.col(rotation_matrix_columns_map[d1(i)])).norm() << "\n" << e_v[i].transpose() << "\n" << T.col(rotation_matrix_columns_map[d1(i)]).transpose() << "\n";
-	}
+		std::cout << d2(i) << " : " << (e_v[i] - T.col(rotation_matrix_columns_map[d1(i)])).norm() << "\n";
 }
 
 void dependency_4(double min_eps, double max_eps, size_t n)
@@ -674,19 +672,20 @@ std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector
 
 std::pair<double, Eigen::VectorXd>* inv_iters(const std::vector<std::vector<double>>& mat, double lambda, double eps)
 {
-	Eigen::MatrixXd A, B, E;
+	Eigen::MatrixXd A, E;
 	E = lambda * Eigen::VectorXd::Ones(mat.size()).asDiagonal();
 	A = matrix_to_eigen(mat);
-	B = (A - E).inverse();
+	Eigen::FullPivLU<Eigen::MatrixXd> lu(A - E);
 	std::random_device rd;
 	std::mt19937 gen(rd());
 	std::uniform_real_distribution<double> dis(0, 1);
 	Eigen::VectorXd y0 = Eigen::VectorXd::NullaryExpr(mat.size(), [&]() {return dis(gen); });
 	Eigen::VectorXd y1 = Eigen::VectorXd::Zero(mat.size());
+
 	double u = get_signed_max_abs(y0);
-	while (true)
+	for (size_t stop_iter = 0; stop_iter < 1000; stop_iter++)
 	{
-		y1 = B * (y0 / u);
+		y1 = lu.solve(y0 / u);
 		u = get_signed_max_abs(y1);
 		if ((y1 - y0).norm() < eps)
 			break;
