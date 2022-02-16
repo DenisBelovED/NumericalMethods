@@ -586,16 +586,81 @@ void lab_4()
 		auto p = inv_iters(*A, d1(i), eps_inv);
 		e_v.push_back(p->second);
 		std::cout << p->first << " : (" << p->second.transpose() << ")'\n";
-		std::cout << "|| A*x - " << d2(i) << "*x || = " << (A_e * p->second - d2(i) * p->second).norm() << "\n";
+		std::cout << "||A*x - " << d2(i) << "*x|| = " << (A_e * p->second - d2(i) * p->second).norm() << "\n";
 	}
-	std::cout << "\nEigen value and corresponding || x - *x ||:\n";
+	std::cout << "\nEigen value and corresponding ||x - x*||:\n";
 	for (size_t i = 0; i < d1.size(); i++)
 		std::cout << d2(i) << " : " << (e_v[i] - T.col(rotation_matrix_columns_map[d1(i)])).norm() << "\n";
 }
 
 void dependency_4(double min_eps, double max_eps, size_t n)
 {
+	FILE* out = fopen("out4.csv", "w");
+	fprintf(out, "eps,||x - x*||,||eigen - eigen*||,||A*x - eigen*x||,iters\n");
+	size_t itc = 0;
+	for (double eps = min_eps; eps < max_eps; eps += min_eps)
+	{
+		if (itc % 1000 == 0)
+			printf("%.2f\n", (itc * 100 / (max_eps / min_eps)));
+		itc++;
+		auto c_eigen = new Eigen::MatrixXd();
+		auto A = generate_matrix(n, 100, 1, 100, c_eigen);
+		auto A_e = matrix_to_eigen(*A);
+		auto res_pair = Jacobi(*A, eps);
+		auto eigen_e = matrix_to_eigen(*res_pair->first);
+		auto rotation_vectors = res_pair->second;
 
+		auto T = matrix_to_eigen(*(*rotation_vectors)[0]);
+		for (size_t i = 1; i < (*rotation_vectors).size(); i++)
+			T *= matrix_to_eigen(*(*rotation_vectors)[i]);
+
+		auto d1 = eigen_e.diagonal();
+		auto rotation_matrix_columns_map = std::map<double, size_t>();
+		for (size_t i = 0; i < d1.size(); i++)
+			rotation_matrix_columns_map[d1(i)] = i;
+		auto d2 = (*c_eigen).diagonal();
+
+		double euality_error_sum = 0, vectors_error_sum = 0;
+		for (size_t i = 0; i < d1.size(); i++)
+			euality_error_sum += (A_e * T.col(i) - d1(i) * T.col(i)).norm();
+
+		std::sort(d1.begin(), d1.end(), std::less<double>());
+		std::sort(d2.begin(), d2.end(), std::less<double>());
+
+		std::vector<Eigen::VectorXd> e_v;
+		for (size_t i = 0; i < d1.size(); i++)
+		{
+			auto p = inv_iters(*A, d1(i), 1e-10);
+			e_v.push_back(p->second);
+			//std::cout << "||A*x - " << d2(i) << "*x|| = " << (A_e * p->second - d2(i) * p->second).norm() << "\n";
+			delete p;
+		}
+		for (size_t i = 0; i < d1.size(); i++)
+			vectors_error_sum += (e_v[i] - T.col(rotation_matrix_columns_map[d1(i)])).norm();
+		
+		//Eigen::EigenSolver<Eigen::MatrixXd> es(A_e);
+		//std::cout << es.eigenvectors() << std::endl;
+		//std::cout << es.eigenvectors().col(0) << std::endl;
+		//for (size_t i = 0; i < d1.size(); i++)
+		//	vectors_error_sum += (es.eigenvectors().col(i) - T.col(rotation_matrix_columns_map[d1(i)])).norm();
+		
+
+		fprintf(
+			out,
+			"%.16f,%.16f,%.16f,%.16f,%d\n",
+			eps, vectors_error_sum, (d1 - d2).norm(), euality_error_sum, rotation_vectors->size()
+		);
+
+		delete A;
+		delete c_eigen;
+		delete res_pair->first;
+		for (size_t i = 0; i < (*(*res_pair).second).size(); i++)
+			delete (*(*res_pair).second)[i];
+		delete (*res_pair).second;
+		delete res_pair;
+	}
+
+	fclose(out);
 }
 
 std::vector<std::vector<double>>* matrix_mul(const std::vector<std::vector<double>>& a, const std::vector<std::vector<double>>& b)
@@ -683,7 +748,7 @@ std::pair<double, Eigen::VectorXd>* inv_iters(const std::vector<std::vector<doub
 	Eigen::VectorXd y1 = Eigen::VectorXd::Zero(mat.size());
 
 	double u = get_signed_max_abs(y0);
-	for (size_t stop_iter = 0; stop_iter < 1000; stop_iter++)
+	for (size_t stop_iter = 0; stop_iter < 100; stop_iter++)
 	{
 		y1 = lu.solve(y0 / u);
 		u = get_signed_max_abs(y1);
