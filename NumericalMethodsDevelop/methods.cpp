@@ -134,7 +134,6 @@ double det(const std::vector<std::vector<double>>& mat)
 	return d;
 }
 
-
 bool sylvester_criterion(const std::vector<std::vector<double>>& mat)
 {
 	std::cout << "Sylvester criterion:" << std::endl;
@@ -156,7 +155,6 @@ bool sylvester_criterion(const std::vector<std::vector<double>>& mat)
 	std::cout << "Succsess!" << std::endl;
 	return true;
 }
-
 
 std::vector<std::vector<double>>* cholesky(std::vector<std::vector<double>>& mat)
 {
@@ -540,30 +538,61 @@ double max(const std::vector<double>& v)
 void lab_4()
 {
 	size_t n;
-	double min, max;
+	double min, max, eps_j = 1e-1, eps_inv = 1e-16;
 	std::cout << "Input n-dim:" << std::endl;
 	std::cin >> n;
 	std::cout << "Input E_1 and E_n for generate [E_1, E_n] linspace eigen numbers:" << std::endl;
 	std::cin >> min >> max;
+	std::cout << "Epsilon Jacobi = " << eps_j << std::endl << "Epsilon Inverse iterations = " << eps_inv << std::endl;
 	auto c_eigen = new Eigen::MatrixXd();
 	auto A = generate_matrix(n, 100, min, max, c_eigen);
-	std::cout << "Generated matrix:\n";
+	std::cout << "Generated matrix A:\n";
 	print_mat(*A);
 	auto A_e = matrix_to_eigen(*A);
-	auto res_pair = Jacobi(*A, 1e-3);
+	auto res_pair = Jacobi(*A, eps_j);
 	auto eigen_e = matrix_to_eigen(*res_pair->first);
 	auto rotation_vectors = res_pair->second;
+
+	auto T = matrix_to_eigen(*(*rotation_vectors)[0]);
+	for (size_t i = 1; i < (*rotation_vectors).size(); i++)
+		T *= matrix_to_eigen(*(*rotation_vectors)[i]);
+	std::cout << "Rotation matrix G:\n" << T << "\n\n";
+
 	auto d1 = eigen_e.diagonal();
+	auto rotation_matrix_columns_map = std::map<double, size_t>();
+	for (size_t i = 0; i < d1.size(); i++)
+		rotation_matrix_columns_map[d1(i)] = i;
 	auto d2 = (*c_eigen).diagonal();
+
+	for (size_t i = 0; i < d1.size(); i++)
+	{
+		std::cout << "Eigen value : eigen vector\n";
+		std::cout << d1(i) << " : (" << T.col(i).transpose() << ")'\n";
+		std::cout << "|| A*x - " << d1(i) << "*x || = " << (A_e * T.col(i) - d1(i) * T.col(i)).norm() << "\n";
+	}
+
 	std::sort(d1.begin(), d1.end(), std::less<double>());
 	std::sort(d2.begin(), d2.end(), std::less<double>());
 
-	std::cout << "Eigen values:\n" << d1 << std::endl;
-	std::cout << "||eigen - eigen*|| = " << (d1 - d2).norm() << std::endl;
-	//std::cout << "||x - x*|| = " << matrix_inf_norm(v_sub(*x, *dx)) << std::endl;
-	//std::cout << "||Ax - eigen*x|| = " << matrix_inf_norm(*nx) << std::endl;
-	std::cout << "Iterations = " << rotation_vectors->size() << std::endl;
-	delete A;
+	std::cout << "Iterations = " << rotation_vectors->size() << "\n\n";
+	std::cout << "Exact eigen values: (" << d2.transpose() << ")'\n";
+	std::cout << "Not exact eigen values: (" << d1.transpose() << ")'\n";
+	std::cout << "||eigen - eigen*|| = " << (d1 - d2).norm() << "\n\n";
+
+	std::cout << "Inverse iteration corrected eigen values and eigen vectors:\n";
+	std::vector<Eigen::VectorXd> e_v;
+	for (size_t i = 0; i < d1.size(); i++)
+	{
+		auto p = inv_iters(*A, d1(i), eps_inv);
+		e_v.push_back(p->second);
+		std::cout << p->first << " : (" << p->second.transpose() << ")'\n";
+		std::cout << "|| A*x - " << d2(i) << "*x || = " << (A_e * p->second - d2(i) * p->second).norm() << "\n";
+	}
+	std::cout << "\nEigen value and corresponding || x - *x ||:\n";
+	for (size_t i = 0; i < d1.size(); i++)
+	{
+		std::cout << d2(i) << " : " << (e_v[i] - T.col(rotation_matrix_columns_map[d1(i)])).norm() << "\n" << e_v[i].transpose() << "\n" << T.col(rotation_matrix_columns_map[d1(i)]).transpose() << "\n";
+	}
 }
 
 void dependency_4(double min_eps, double max_eps, size_t n)
@@ -614,7 +643,7 @@ std::vector<std::vector<double>>* Jacobi_rotation(
 }
 
 std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector<double>>*>*>* Jacobi(
-	const std::vector<std::vector<double>> mat,
+	const std::vector<std::vector<double>>& mat,
 	double eps
 )
 {
@@ -641,6 +670,38 @@ std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector
 	}
 	auto res = new std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector<double>>*>*>(A, rotation_matrixes);
 	return res;
+}
+
+std::pair<double, Eigen::VectorXd>* inv_iters(const std::vector<std::vector<double>>& mat, double lambda, double eps)
+{
+	Eigen::MatrixXd A, B, E;
+	E = lambda * Eigen::VectorXd::Ones(mat.size()).asDiagonal();
+	A = matrix_to_eigen(mat);
+	B = (A - E).inverse();
+	std::random_device rd;
+	std::mt19937 gen(rd());
+	std::uniform_real_distribution<double> dis(0, 1);
+	Eigen::VectorXd y0 = Eigen::VectorXd::NullaryExpr(mat.size(), [&]() {return dis(gen); });
+	Eigen::VectorXd y1 = Eigen::VectorXd::Zero(mat.size());
+	double u = get_signed_max_abs(y0);
+	while (true)
+	{
+		y1 = B * (y0 / u);
+		u = get_signed_max_abs(y1);
+		if ((y1 - y0).norm() < eps)
+			break;
+		y0 = y1;
+	}
+	return new std::pair<double, Eigen::VectorXd>(lambda + (1 / u), y1 / u);
+}
+
+double get_signed_max_abs(const Eigen::VectorXd& v)
+{
+	double m = std::numeric_limits<double>::min();
+	for (size_t i = 0; i < v.size(); i++)
+		if (std::abs(v(i)) > std::abs(m))
+			m = v(i);
+	return m;
 }
 
 double ndss(const std::vector<std::vector<double>>& mat)

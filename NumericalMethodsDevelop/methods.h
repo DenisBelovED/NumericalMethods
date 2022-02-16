@@ -4,6 +4,7 @@
 #include <cassert>
 #include <math.h>
 #include <vector>
+#include <map>
 #include <random>
 #include <Eigen/Dense>
 #include <stdio.h>
@@ -148,13 +149,27 @@ std::vector<std::vector<double>>* matrix_mul(const std::vector<std::vector<doubl
 std::vector<std::vector<double>>* Jacobi_rotation(std::vector<std::vector<double>>& mat, double sin_phi, double cos_phi, size_t opt_i, size_t opt_j);
 
 // Метод вращений Якоби
-// mat -  квадратная, симметричная матрица
+// mat -  квадратная симметричная матрица
 // eps - требуемая точность решения
 // Возвращает пару элементов: диагональную матрицу собственных значений и вектор из матриц вращений
 std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector<double>>*>*>* Jacobi(
-	const std::vector<std::vector<double>> mat,
+	const std::vector<std::vector<double>>& mat,
 	double eps
 );
+
+// Метод обратной итерации со сдвигом
+// mat -  квадратная симметричная матрица
+// lambda - приближенное СЧ
+// eps - требуемая точность решения
+// Возвращает пару элементов: уточнённое собственное значение и собственный вектор
+std::pair<double, Eigen::VectorXd>* inv_iters(
+	const std::vector<std::vector<double>>& mat,
+	double lambda,
+	double eps
+);
+
+//Возвращает максимальный по модулю элемент вектора с учётом знака
+double get_signed_max_abs(const Eigen::VectorXd& v);
 
 // Вычисление суммы квадратов элементов вне диагонали
 double ndss(const std::vector<std::vector<double>>& mat);
