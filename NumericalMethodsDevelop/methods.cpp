@@ -548,7 +548,7 @@ double max(const std::vector<double>& v)
 void lab_4()
 {
 	size_t n;
-	double min, max, eps_j = 1e-7, eps_inv = 1e-16;
+	double min, max, eps_j = 1e-1, eps_inv = 1e-16;
 	std::cout << "Input n-dim:" << std::endl;
 	std::cin >> n;
 	std::cout << "Input E_1 and E_n for generate [E_1, E_n] linspace eigen numbers:" << std::endl;
