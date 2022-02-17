@@ -56,7 +56,8 @@ std::vector<std::vector<double>>* generate_matrix(
 	size_t mod = 10,
 	double min = 0.01,
 	double max = 1,
-	Eigen::MatrixXd* diag = nullptr
+	Eigen::MatrixXd* diag = nullptr,
+	Eigen::MatrixXd* eigen_vectors = nullptr
 );
 
 // Печать матрицы и столбца, если есть
