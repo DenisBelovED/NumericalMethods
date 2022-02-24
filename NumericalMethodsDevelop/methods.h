@@ -110,9 +110,9 @@ void dependency_3(double min_eps, double max_eps, size_t n, double beta = 1.5);
 // beta - коэффициент релаксации из отрезка (0, 2)
 // eps - точность решения
 // Возвращает пару элементов: вектор и число итераций
-std::pair<std::vector<double>*, size_t>* SOR(
-	const std::vector<std::vector<double>>& mat,
-	const std::vector<double>& b,
+std::pair<Eigen::VectorXd, size_t> SOR(
+	const Eigen::MatrixXd& mat,
+	const Eigen::VectorXd& b,
 	double beta,
 	double eps
 );
@@ -143,7 +143,7 @@ std::vector<std::vector<double>>* matrix_mul(const std::vector<std::vector<doubl
 
 // Метод реализующий обнуление оптимального элемента a_ij
 // Возвращает указатель на матрицу поворота
-// Изменяет mat в ходе обнуления a_ij
+// Поворачивает mat в ходе обнуления a_ij
 // mat - матрица
 // sin_phi, cos_phi - углы для матрицы поворота
 // opt_i, opt_j - индексы оптимального элемента
@@ -168,9 +168,10 @@ std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector
 // mat -  квадратная симметричная матрица
 // lambda - приближенное СЧ
 // eps - требуемая точность решения
-// Возвращает пару элементов: уточнённое собственное значение и собственный вектор
-std::pair<double, Eigen::VectorXd>* inv_iters(
+// Возвращает тройку элементов: уточнённое собственное значение, собственный вектор, число итераций уточнения <= 100
+std::tuple<double, Eigen::VectorXd, size_t>* inv_iters(
 	const std::vector<std::vector<double>>& mat,
+	Eigen::VectorXd v_input,
 	double lambda,
 	double eps
 );
@@ -179,7 +180,7 @@ std::pair<double, Eigen::VectorXd>* inv_iters(
 double get_signed_max_abs(const Eigen::VectorXd& v);
 
 // Вычисление суммы квадратов элементов вне диагонали
-double ndss(const std::vector<std::vector<double>>& mat);
+double ndss(const std::vector<std::vector<double>>& mat, bool t = false);
 
 // Выбор оптимального элемента для обнуления
 // mat - матрица для выбора

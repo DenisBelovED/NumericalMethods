@@ -164,7 +164,14 @@ std::vector<std::vector<double>>* cholesky(std::vector<std::vector<double>>& mat
 		for (size_t j = 0; j <= i; j++)
 		{
 			if (i == j)
+			{
 				(*l_mat)[i][j] = ii_element(*l_mat, mat[i][j], i);
+				if ((*l_mat)[i][j] == -1)
+				{
+					std::cout << "Matrix contain negative eigenvalues";
+					return nullptr;
+				}
+			}
 			else if (j < i)
 				(*l_mat)[i][j] = ij_element(*l_mat, mat[i][j], i, j);
 		}
@@ -177,6 +184,8 @@ double ii_element(std::vector<std::vector<double>>& t_mat, double a, size_t line
 	double sum = 0;
 	for (int i = 0; i < line; i++)
 		sum += t_mat[line][i] * t_mat[line][i];
+	if (a - sum <= 0)
+		return -1;
 	return std::sqrt(a - sum);
 }
 
@@ -228,11 +237,6 @@ void lab_2()
 	std::cin >> min >> max;
 	std::cout << "Generate linear system Ax = b: " << n << "x" << n << std::endl;
 	auto A = generate_matrix(n, 100, min, max);
-	if (!sylvester_criterion(*A))
-	{
-		std::cout << "Matrix not positive defined" << std::endl;
-		return;
-	}
 	auto b = generate_vector(n, 10);
 	auto A_e = matrix_to_eigen(*A);
 	auto b_e = vector_to_eigen(*b);
@@ -318,15 +322,15 @@ void print_mat(const std::vector<std::vector<double>>& mat, const std::vector<do
 		for (size_t i = 0; i < mat.size(); i++)
 		{
 			for (size_t j = 0; j < mat.size(); j++)
-				printf("%.8f ", mat[i][j]);
+				printf("%.1f, ", mat[i][j]);
 			std::cout << std::endl;
 		}
 	else
 		for (size_t i = 0; i < mat.size(); i++)
 		{
 			for (size_t j = 0; j < mat.size(); j++)
-				printf("%.8f ", mat[i][j]);
-			printf("| %.8f\n", b[i]);
+				printf("%.1f, ", mat[i][j]);
+			printf("| %.1f\n", b[i]);
 		}
 	std::cout << std::endl;
 }
@@ -398,27 +402,21 @@ void lab_3()
 		return;
 	}
 	std::cout << "Generate linear system Ax = b: " << n << "x" << n << std::endl;
-	auto A = generate_matrix(n, 100, min, max);
-	if (!sylvester_criterion(*A))
-	{
-		std::cout << "Matrix not positive defined" << std::endl;
-		return;
-	}
-	auto b = generate_vector(n, 10);
+	auto A = generate_matrix(n, 10, min, max);
+	auto x_c = generate_vector(n, 10);
 	auto A_e = matrix_to_eigen(*A);
-	auto b_e = vector_to_eigen(*b);
-	auto x_c = A_e.inverse() * b_e;
-	std::cout << "det(A) = " << A_e.determinant() << std::endl;
-	print_mat(*A, *b);
+	auto x_e = vector_to_eigen(*x_c);
+	auto b_e = A_e * x_e;
+	auto b = eigen_to_vector(b_e);
+	print_mat(*A, *x_c);
 
-	auto pair = SOR(*A, *b, beta, 1e-3);
+	/*auto pair = SOR(*A, *b, beta, 1e-1);
 	auto x = pair->first;
 	auto iters = pair->second;
 	auto e_x = vector_to_eigen(*x);
 	std::cout << "Solve x:" << std::endl << e_x << std::endl;
-	auto dx = eigen_to_vector(x_c);
 	auto nx = eigen_to_vector(A_e * e_x - b_e);
-	std::cout << "||x - x*|| = " << matrix_inf_norm(v_sub(*x, *dx)) << std::endl;
+	std::cout << "||x - x*|| = " << matrix_inf_norm(v_sub(*x, *x_c)) << std::endl;
 	std::cout << "||Ax - b|| = " << matrix_inf_norm(*nx) << std::endl;
 	std::cout << "Iterations = " << iters << std::endl;
 
@@ -426,86 +424,90 @@ void lab_3()
 	delete b;
 	delete x;
 	delete pair;
-	delete dx;
-	delete nx;
+	delete x_c;
+	delete nx;*/
 }
 
 void dependency_3(double min_eps, double max_eps, size_t n, double beta)
 {
-	FILE* out = fopen("out3.csv", "w");
-	fprintf(out, "eps,||x - x*||,||Ax - b||,iters\n");
+	FILE* out = fopen("C:/Users/Denis/YandexDisk/Polytech/NumMethods/Lab3/out3.csv", "w");
+	fprintf(out, "eps,||x - x*||,||Ax - b||,iters,%.2f\n", beta);
 
-	for (double eps = min_eps; eps < max_eps; eps += min_eps)
+	Eigen::MatrixXd A_e(10, 10);
+	Eigen::VectorXd x_e(10);
+	/*
+	A_e <<
+		55.8, 3.1, -6.7, -16.5, -7.7, 1.6, 4.2, -6.9, -4.4, 7.8,
+		3.1, 39.5, -14.4, 16.7, -11.5, 2.5, -13.7, -2.6, 15.2, -22.0,
+		-6.7, -14.4, 67.3, -6.4, 11.3, 13.2, -4.8, 3.7, 4.5, 4.6,
+		-16.5, 16.7, -6.4, 57.8, 5.4, -0.3, -7.9, -5.5, 0.5, -0.1,
+		-7.7, -11.5, 11.3, 5.4, 56.6, -2.0, -0.4, -16.3, -11.2, 13.1,
+		1.6, 2.5, 13.2, -0.3, -2.0, 33.5, -32.7, 4.1, 2.8, -0.7,
+		4.2, -13.7, -4.8, -7.9, -0.4, -32.7, 47.4, -7.4, -0.7, -8.1,
+		-6.9, -2.6, 3.7, -5.5, -16.3, 4.1, -7.4, 42.6, 0.9, 3.8,
+		-4.4, 15.2, 4.5, 0.5, -11.2, 2.8, -0.7, 0.9, 40.4, -2.0,
+		7.8, -22.0, 4.6, -0.1, 13.1, -0.7, -8.1, 3.8, -2.0, 64.1;
+	x_e <<
+		41.0, 38.0, -36.0, -45.0, 40.0, 41.0, 17.0, -8.0, -7.0, -16.0;
+	*/
+
+	A_e <<
+		67.4, 2.3, -5.0, -0.1, -0.7, -0.7, -1.8, 2.1, 4.1, -9.5, 
+		2.3, 67.1, 7.3, 6.4, 6.6, 2.1, 9.9, 0.9, -3.6, -2.5, 
+		-5.0, 7.3, 71.6, 1.8, -0.0, 6.1, 1.9, -0.1, 5.7, -1.2, 
+		-0.1, 6.4, 1.8, 78.4, 0.5, 4.0, -3.5, -7.5, 2.6, 1.7, 
+		-0.7, 6.6, -0.0, 0.5, 88.3, -8.0, -9.5, 6.2, 2.9, -9.1,
+		- 0.7, 2.1, 6.1, 4.0, -8.0, 74.0, -3.8, 4.1, 1.2, -4.7,
+		- 1.8, 9.9, 1.9, -3.5, -9.5, -3.8, 82.2, 2.3, -7.6, -5.6,
+		2.1, 0.9, -0.1, -7.5, 6.2, 4.1, 2.3, 65.8, -1.0, -0.3,
+		4.1, -3.6, 5.7, 2.6, 2.9, 1.2, -7.6, -1.0, 72.9, -1.8,
+		- 9.5, -2.5, -1.2, 1.7, -9.1, -4.7, -5.6, -0.3, -1.8, 82.3;
+	x_e <<
+		-1.0, -5.0, -2.0, 3.0, 1, 2, -1, -2, 2, 2;
+
+	Eigen::VectorXd b_e = A_e * x_e;
+
+	for (double eps = min_eps; max_eps + min_eps > eps; eps *= 10)
 	{
-		auto A = generate_matrix(n, 100, 1, 100);
-		auto b = generate_vector(n, 10);
-		auto A_e = matrix_to_eigen(*A);
-		auto b_e = vector_to_eigen(*b);
-		auto x_c = A_e.inverse() * b_e;
-		auto pair = SOR(*A, *b, beta, eps);
-		auto x = pair->first;
-		auto iters = pair->second;
-		auto e_x = vector_to_eigen(*x);
-		auto dx = eigen_to_vector(x_c);
-		auto discrepancy = eigen_to_vector(A_e * e_x - b_e);
-
-		fprintf(out, "%.16f,%.16f,%.16f,%d\n", eps, matrix_inf_norm(v_sub(*x, *dx)), matrix_inf_norm(*discrepancy), iters);
-
-		delete A;
-		delete b;
-		delete x;
-		delete pair;
-		delete dx;
-		delete discrepancy;
+		auto pair = SOR(A_e, b_e, beta, eps);
+		fprintf(out, "%.16f,%.16f,%.16f,%d\n", eps, (pair.first - x_e).norm(), (A_e * pair.first - b_e).norm(), pair.second);
 	}
-
 	fclose(out);
 }
 
-std::pair<std::vector<double>*, size_t>* SOR(
-	const std::vector<std::vector<double>>& mat,
-	const std::vector<double>& b,
+std::pair<Eigen::VectorXd, size_t> SOR(
+	const Eigen::MatrixXd& mat,
+	const Eigen::VectorXd& b,
 	double beta,
 	double eps
 )
 {
-	if ((beta <= 0) || (2 <= beta))
-	{
-		std::cout << beta << " - must be in (0, 2)" << std::endl;
-		return nullptr;
-	}
-	if (eps <= 0)
-	{
-		std::cout << eps << " - must be > 0" << std::endl;
-		return nullptr;
-	}
-
-	auto x0 = new std::vector<double>(mat.size(), 0);
-	auto x1 = new std::vector<double>(mat.size(), 1);
+	Eigen::VectorXd v0 = Eigen::VectorXd::Zero(mat.cols());
+	Eigen::VectorXd v1 = Eigen::VectorXd::Ones(mat.cols());
 	size_t iters = 0;
-	while (matrix_inf_norm(v_sub(*x0, *x1)) >= eps)
+	//(mat * v1 - b)
+	while ((v1 - v0).norm() >= eps)
 	{
 		iters += 1;
-		for (size_t i = 0; i < (*x0).size(); i++)
-			(*x0)[i] = (*x1)[i];
-		for (size_t i = 0; i < mat.size(); i++)
+		v0 = v1;
+		for (size_t i = 0; i < mat.cols(); i++)
 		{
-			(*x1)[i] = 0;
-			for (size_t j = 0; j < mat.size(); j++)
+			v1(i) = 0;
+			for (size_t j = 0; j < mat.cols(); j++)
 			{
+				double z = 0;
 				if (i == j)
-					(*x1)[i] += (1 - beta) * (*x0)[j];
+					z = ((1 - beta) * v0(j));
 				if (i < j)
-					(*x1)[i] -= beta * (*x0)[j] * mat[i][j] / mat[i][i];
+					z = ((-beta) * v0(j) * (mat(i, j) / mat(i, i)));
 				if (i > j)
-					(*x1)[i] -= beta * (*x1)[j] * mat[i][j] / mat[i][i];
+					z = ((-beta) * v1(j) * (mat(i, j) / mat(i, i)));
+				v1(i) += z;
 			}
-			(*x1)[i] += beta * b[i] / mat[i][i];
+			v1(i) += ((beta * b(i)) / mat(i, i));
 		}
 	}
-	auto res = new std::pair<std::vector<double>*, size_t>(x1, iters);
-	delete x0;
-	return res;
+	return std::pair<Eigen::VectorXd, size_t>(v1, iters);
 }
 
 std::vector<double> v_sub(const std::vector<double>& x0, const std::vector<double>& x1)
@@ -599,39 +601,46 @@ void lab_4()
 	std::cout << "||eigen - eigen*|| = " << (d1 - d2).norm() << "\n\n";
 
 	std::cout << "Inverse iteration corrected eigen values and eigen vectors:\n";
-	std::vector<Eigen::VectorXd> e_v;
-	for (size_t i = 0; i < d1.size(); i++)
+	size_t iters = 0;
+	/*for (size_t i = 0; i < d1.size(); i++)
 	{
-		auto p = inv_iters(*A, d1(i), eps_inv);
-		e_v.push_back(p->second);
-		std::cout << p->first << " : (" << p->second.transpose() << ")'\n";
-		std::cout << "||A*x - " << d2(i) << "*x|| = " << (A_e * p->second - p->first * p->second).norm() << "\n";
+		auto t = inv_iters(*A, d1(i), eps_inv);
+		double exact_eigen_value = std::get<0>(*t);
+		auto exact_eigen_vector = std::get<1>(*t);
+		iters += std::get<2>(*t);
+		std::cout << exact_eigen_value << " : (" << exact_eigen_vector.transpose() << ")'\n";
+		double nrm = get_signed_max_abs((*c_eigen_mat).col(i));
+		std::cout << "||x - x*|| = " << (((*c_eigen_mat).col(i) / nrm).cwiseAbs() - exact_eigen_vector.cwiseAbs()).norm() << "\n";
+		std::cout << "||A*x - " << d2(i) << "*x|| = " << (A_e * exact_eigen_vector - exact_eigen_value * exact_eigen_vector).norm() << "\n";
 	}
 	std::cout << "\nEigen value and corresponding ||x - x*||:\n";
 	for (size_t i = 0; i < d1.size(); i++)
-		std::cout << d2(i) << " : " << ((*c_eigen_mat).col(i).cwiseAbs() - T.col(rotation_matrix_columns_map[d1(i)]).cwiseAbs()).norm() << "\n";
+		std::cout << d2(i) << " : " << ((*c_eigen_mat).col(i).cwiseAbs() - T.col(rotation_matrix_columns_map[d1(i)]).cwiseAbs()).norm() << "\n";*/
 }
 
 void dependency_4(double min_eps, double max_eps, size_t n)
 {
-	FILE* out = fopen("out4.csv", "w");
-	fprintf(out, "eps,||x - x*||,||eigen - eigen*||,||A*x - eigen*x||,iters\n");
+	FILE* out = fopen("C:/Users/Denis/YandexDisk/Polytech/NumMethods/Lab4/out4.csv", "w");
+	fprintf(
+		out,
+		"eps,||x - x*||,||eigen - eigen*||,||A*x - eigen*x||,iters,||x - x*||e,||eigen - eigen*||e,||A*x - eigen*x||e,inv_iters\n"
+	);
 	size_t itc = 0;
-	for (double eps = min_eps; eps < max_eps; eps += min_eps)
+	auto c_eigen = new Eigen::MatrixXd();
+	auto c_eigen_mat = new Eigen::MatrixXd();
+	auto A = generate_matrix(n, 20, 1, 10, c_eigen, c_eigen_mat);
+	auto A_e = matrix_to_eigen(*A);
+	for (double eps = min_eps; max_eps + min_eps > eps; eps *= 10)
 	{
 		if (itc % 1000 == 0)
 			printf("%.2f\n", (itc * 100 / (max_eps / min_eps)));
 		itc++;
-		auto c_eigen = new Eigen::MatrixXd();
-		auto c_eigen_mat = new Eigen::MatrixXd();
-		auto A = generate_matrix(n, 100, 1, 100, c_eigen, c_eigen_mat);
-		auto A_e = matrix_to_eigen(*A);
 		auto res_pair = Jacobi(*A, eps);
 		auto eigen_e = matrix_to_eigen(*res_pair->first);
 		auto rotation_vectors = res_pair->second;
 
-		auto T = matrix_to_eigen(*(*rotation_vectors)[0]);
-		for (size_t i = 1; i < (*rotation_vectors).size(); i++)
+		Eigen::MatrixXd T = Eigen::MatrixXd::Identity(n, n);
+		for (size_t i = 0; i < (*rotation_vectors).size(); i++)
 			T *= matrix_to_eigen(*(*rotation_vectors)[i]);
 
 		auto d1 = eigen_e.diagonal();
@@ -643,27 +652,43 @@ void dependency_4(double min_eps, double max_eps, size_t n)
 		std::sort(d1.begin(), d1.end(), std::less<double>());
 		std::sort(d2.begin(), d2.end(), std::less<double>());
 
-		double euality_error_sum = 0, vectors_error_sum = 0;
+		double euality_error_sum = 0, vectors_error_sum = 0, exact_vectors_error_sum = 0, exact_euality_error_sum = 0;
 		for (size_t i = 0; i < d1.size(); i++)
 		{
 			euality_error_sum += (A_e * T.col(rotation_matrix_columns_map[d1(i)]) - d1(i) * T.col(rotation_matrix_columns_map[d1(i)])).norm();
 			vectors_error_sum += ((*c_eigen_mat).col(i).cwiseAbs() - T.col(rotation_matrix_columns_map[d1(i)]).cwiseAbs()).norm();
 		}
 
+		Eigen::VectorXd d3(d1.size());
+		size_t iters = 0;
+		for (size_t i = 0; i < d1.size(); i++)
+		{
+			auto t = inv_iters(*A, T.col(rotation_matrix_columns_map[d1(i)]), d1(i), eps);
+			double exact_eigen_value = std::get<0>(*t);
+			auto exact_eigen_vector = std::get<1>(*t);
+			iters += std::get<2>(*t);
+			d3(i) = exact_eigen_value;
+			exact_euality_error_sum += (A_e * exact_eigen_vector - exact_eigen_value * exact_eigen_vector).norm();
+			double nrm = get_signed_max_abs((*c_eigen_mat).col(i));
+			exact_vectors_error_sum += (((*c_eigen_mat).col(i) / nrm) - exact_eigen_vector).norm();
+			delete t;
+		}
+
 		fprintf(
 			out,
-			"%.16f,%.16f,%.16f,%.16f,%d\n",
-			eps, vectors_error_sum, (d1 - d2).norm(), euality_error_sum, rotation_vectors->size()
+			"%.16f,%.16f,%.16f,%.16f,%d,%.16f,%.16f,%.16f,%d\n",
+			eps, vectors_error_sum, (d1 - d2).norm(), euality_error_sum, rotation_vectors->size(),
+			exact_vectors_error_sum, (d3 - d2).norm(), exact_euality_error_sum, iters / n
 		);
 
-		delete A;
-		delete c_eigen;
 		delete res_pair->first;
 		for (size_t i = 0; i < (*(*res_pair).second).size(); i++)
 			delete (*(*res_pair).second)[i];
 		delete (*res_pair).second;
 		delete res_pair;
 	}
+	delete A;
+	delete c_eigen;
 
 	fclose(out);
 }
@@ -723,7 +748,7 @@ std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector
 		for (size_t j = 0; j < mat[0].size(); j++)
 			(*A)[i][j] = mat[i][j];
 
-	while (ndss(*A) >= eps)
+	while (ndss(*A, true) >= eps)
 	{
 		auto opt = select_opt(*A);
 		size_t opt_i = opt.first, opt_j = opt.second;
@@ -740,28 +765,27 @@ std::pair<std::vector<std::vector<double>>*, std::vector<std::vector<std::vector
 	return res;
 }
 
-std::pair<double, Eigen::VectorXd>* inv_iters(const std::vector<std::vector<double>>& mat, double lambda, double eps)
+std::tuple<double, Eigen::VectorXd, size_t>* inv_iters(const std::vector<std::vector<double>>& mat, Eigen::VectorXd v_input, double lambda, double eps)
 {
 	Eigen::MatrixXd A, E;
 	E = lambda * Eigen::VectorXd::Ones(mat.size()).asDiagonal();
 	A = matrix_to_eigen(mat);
 	Eigen::FullPivLU<Eigen::MatrixXd> lu(A - E);
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_real_distribution<double> dis(0, 1);
-	Eigen::VectorXd y0 = Eigen::VectorXd::NullaryExpr(mat.size(), [&]() {return dis(gen); });
+	Eigen::VectorXd y0 = v_input;
 	Eigen::VectorXd y1 = Eigen::VectorXd::Zero(mat.size());
 
 	double u = get_signed_max_abs(y0);
-	for (size_t stop_iter = 0; stop_iter < 100; stop_iter++)
+	size_t iters = 0;
+	for (size_t stop_iter = 0; stop_iter < 1000; stop_iter++)
 	{
+		iters++;
 		y1 = lu.solve(y0 / u);
 		u = get_signed_max_abs(y1);
-		if ((y1 - y0).norm() < eps)
+		if ((A * y1 - (lambda + (1 / u)) * y1).norm() < 1e-6)
 			break;
 		y0 = y1;
 	}
-	return new std::pair<double, Eigen::VectorXd>(lambda + (1 / u), y1 / u);
+	return new std::tuple<double, Eigen::VectorXd, size_t>(lambda + (1 / u), y1 / u, iters);
 }
 
 double get_signed_max_abs(const Eigen::VectorXd& v)
@@ -773,13 +797,20 @@ double get_signed_max_abs(const Eigen::VectorXd& v)
 	return m;
 }
 
-double ndss(const std::vector<std::vector<double>>& mat)
+double ndss(const std::vector<std::vector<double>>& mat, bool t)
 {
-	double sum = 0;
+	double sum = 0, m = std::numeric_limits<double>::min();
+	if (t)
+	{
+		for (size_t i = 0; i < mat.size(); i++)
+			for (size_t j = i + 1; j < mat[0].size(); j++)
+				if (mat[i][j] * mat[i][j] > m)
+					m = mat[i][j] * mat[i][j];
+		return m;
+	}
 	for (size_t i = 0; i < mat.size(); i++)
-		for (size_t j = 0; j < mat[0].size(); j++)
-			if (i != j)
-				sum += mat[i][j] * mat[i][j];
+		for (size_t j = i + 1; j < mat[0].size(); j++)
+			sum += mat[i][j] * mat[i][j];
 	return sum;
 }
 
@@ -806,8 +837,6 @@ std::pair<size_t, size_t> select_opt(const std::vector<std::vector<double>>& mat
 			opt_j = j;
 			max_r = std::abs(mat[opt_i][j]);
 		}
-	if(opt_i > opt_j)
-		return std::pair<size_t, size_t>(opt_j, opt_i);
 	return std::pair<size_t, size_t>(opt_i, opt_j);
 }
 
