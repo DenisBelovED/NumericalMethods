@@ -78,7 +78,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(SolutionDir)\eigen-3.4.0;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)\eigen-3.4.0;C:\Users\2pm3\Documents\NumericalMethods\eigen-3.4.0;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -141,6 +141,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Lab1.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="methods.cpp" />
   </ItemGroup>
